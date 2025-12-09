@@ -27,3 +27,7 @@ pytest-cov
 # Development
 black
 isort
+
+# Logging
+loguru
+
