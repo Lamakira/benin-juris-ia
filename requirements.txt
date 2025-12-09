@@ -1,0 +1,29 @@
+# Core Dependencies
+langchain
+langchain-openai
+langchain-community
+
+# PDF Processing
+pdfplumber
+
+# Vector Store
+chromadb
+
+# OpenAI
+#openai
+
+# Web Interface
+streamlit
+
+# Utilities
+python-dotenv
+pydantic
+pydantic-settings
+
+# Testing
+pytest
+pytest-cov
+
+# Development
+black
+isort
