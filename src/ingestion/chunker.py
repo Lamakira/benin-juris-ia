@@ -4,6 +4,7 @@ Segmentation Structure-Aware par Article avec gestion du cas spécial Article 1.
 """
 import re
 from typing import List, Dict, Any, Optional, Tuple
+from loguru import logger
 
 
 # Pattern principal pour détecter le début d'un article
@@ -36,10 +37,10 @@ def chunk_by_articles(full_text: str) -> List[Dict[str, Any]]:
     matches = list(ARTICLE_PATTERN.finditer(full_text))
     
     if not matches:
-        print("⚠️  Aucun article trouvé dans le texte!")
+        logger.warning("Aucun article trouve dans le texte!")
         return chunks
     
-    print(f"📑 {len(matches)} articles détectés")
+    logger.info(f"{len(matches)} articles detectes")
     
     for i, match in enumerate(matches):
         start_pos = match.start()
@@ -58,7 +59,7 @@ def chunk_by_articles(full_text: str) -> List[Dict[str, Any]]:
         if article_num == "1":
             definition_chunks = sub_chunk_definitions(article_content, article_id)
             chunks.extend(definition_chunks)
-            print(f"   📘 {article_id} (Définitions) → {len(definition_chunks)} sous-chunks")
+            logger.info(f"   {article_id} (Definitions) -> {len(definition_chunks)} sous-chunks")
         else:
             chunks.append({
                 "id": article_id,
@@ -72,10 +73,10 @@ def chunk_by_articles(full_text: str) -> List[Dict[str, Any]]:
     article_count = len([c for c in chunks if c["type"] == "article"])
     definition_count = len([c for c in chunks if c["type"] == "definition"])
     
-    print(f"✅ Chunking terminé:")
-    print(f"   - Articles standards: {article_count}")
-    print(f"   - Définitions (Article 1): {definition_count}")
-    print(f"   - Total chunks: {len(chunks)}")
+    logger.success("Chunking termine:")
+    logger.info(f"   - Articles standards: {article_count}")
+    logger.info(f"   - Definitions (Article 1): {definition_count}")
+    logger.info(f"   - Total chunks: {len(chunks)}")
     
     return chunks
 

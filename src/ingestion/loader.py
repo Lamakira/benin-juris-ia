@@ -5,6 +5,7 @@ Extraction du texte PDF avec pdfplumber pour une meilleure gestion de l'encodage
 import pdfplumber
 from pathlib import Path
 from typing import List
+from loguru import logger
 
 
 def load_pdf(pdf_path: str | Path) -> List[str]:
@@ -22,6 +23,7 @@ def load_pdf(pdf_path: str | Path) -> List[str]:
     pdf_path = Path(pdf_path)
     
     if not pdf_path.exists():
+        logger.error(f"Fichier PDF non trouve: {pdf_path}")
         raise FileNotFoundError(f"Fichier PDF non trouvé: {pdf_path}")
     
     pages_text: List[str] = []
@@ -34,9 +36,9 @@ def load_pdf(pdf_path: str | Path) -> List[str]:
             else:
                 # Page vide ou non extractible
                 pages_text.append("")
-                print(f"⚠️  Page {page_num}: aucun texte extrait")
+                logger.warning(f"Page {page_num}: aucun texte extrait")
     
-    print(f"✅ {len(pages_text)} pages chargées depuis {pdf_path.name}")
+    logger.success(f"{len(pages_text)} pages chargees depuis {pdf_path.name}")
     return pages_text
 
 

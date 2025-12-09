@@ -5,6 +5,7 @@ Inclut le fix pour l'encodage CID (Mojibake) spécifique à ce PDF.
 """
 import re
 from typing import List, Pattern
+from loguru import logger
 
 
 # =============================================================================
@@ -297,12 +298,12 @@ def clean_text(raw_pages: List[str]) -> str:
     merged_text = "\n".join(clean_lines)
     
     # Statistiques de nettoyage
-    print(f"Nettoyage terminé:")
-    print(f"   - Pages traitées: {stats['pages_processed']}")
-    print(f"   - Lignes analysées: {stats['total_lines']}")
-    print(f"   - Lignes supprimées (bruit): {stats['removed_lines']}")
-    print(f"   - CID réparés: {stats['cid_fixed']}")
-    print(f"   - Réduction: {stats['removed_lines']/max(1, stats['total_lines'])*100:.1f}%")
+    logger.info("Nettoyage termine:")
+    logger.info(f"   - Pages traitees: {stats['pages_processed']}")
+    logger.info(f"   - Lignes analysees: {stats['total_lines']}")
+    logger.info(f"   - Lignes supprimees (bruit): {stats['removed_lines']}")
+    logger.info(f"   - CID repares: {stats['cid_fixed']}")
+    logger.info(f"   - Reduction: {stats['removed_lines']/max(1, stats['total_lines'])*100:.1f}%")
     
     return merged_text
 

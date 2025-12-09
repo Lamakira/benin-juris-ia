@@ -8,6 +8,7 @@ pour construire dynamiquement la hiérarchie, au lieu de mappings statiques.
 import re
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
+from loguru import logger
 
 
 # =============================================================================
@@ -188,7 +189,7 @@ def build_article_hierarchy_map(full_text: str) -> Dict[int, HierarchyState]:
         if not parsing_started:
             if is_start_of_content(line):
                 parsing_started = True
-                print(f"📍 Début du contenu détecté: \"{line[:60]}...\"")
+                logger.info(f"Debut du contenu detecte: {line[:60]}...")
                 # Continuer pour traiter cette ligne comme un LIVRE
             else:
                 # Pas encore dans le contenu, ignorer
@@ -237,13 +238,13 @@ def build_article_hierarchy_map(full_text: str) -> Dict[int, HierarchyState]:
             article_hierarchy_map[article_num] = current_state.copy()
             stats["articles"] += 1
     
-    print(f"📊 Parsing hiérarchique terminé:")
-    print(f"   - Lignes de sommaire ignorées: {stats['toc_lines_skipped']}")
-    print(f"   - Livres détectés: {stats['livres']}")
-    print(f"   - Titres détectés: {stats['titres']}")
-    print(f"   - Chapitres détectés: {stats['chapitres']}")
-    print(f"   - Sections détectées: {stats['sections']}")
-    print(f"   - Articles mappés: {stats['articles']}")
+    logger.info("Parsing hierarchique termine:")
+    logger.info(f"   - Lignes de sommaire ignorees: {stats['toc_lines_skipped']}")
+    logger.info(f"   - Livres detectes: {stats['livres']}")
+    logger.info(f"   - Titres detectes: {stats['titres']}")
+    logger.info(f"   - Chapitres detectes: {stats['chapitres']}")
+    logger.info(f"   - Sections detectees: {stats['sections']}")
+    logger.info(f"   - Articles mappes: {stats['articles']}")
     
     return article_hierarchy_map
 
@@ -353,9 +354,9 @@ def enrich_chunks_with_hierarchy(
         
         enriched_chunks.append(enriched)
     
-    print(f"📋 Enrichissement terminé:")
-    print(f"   - Chunks enrichis avec hiérarchie: {stats['enriched']}")
-    print(f"   - Chunks sans mapping (définitions, etc.): {stats['unknown']}")
+    logger.info("Enrichissement termine:")
+    logger.info(f"   - Chunks enrichis avec hierarchie: {stats['enriched']}")
+    logger.info(f"   - Chunks sans mapping (definitions, etc.): {stats['unknown']}")
     
     return enriched_chunks
 
@@ -392,7 +393,7 @@ def enrich_metadata(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     global _full_text_cache
     
     if _full_text_cache is None:
-        print("⚠️  Attention: Texte complet non défini. Utilisation du fallback.")
+        logger.warning("Texte complet non defini. Utilisation du fallback.")
         # Fallback: reconstruire le texte depuis les chunks
         _full_text_cache = "\n".join(c.get("content", "") for c in chunks)
     
@@ -407,9 +408,9 @@ def debug_hierarchy_detection(full_text: str) -> None:
     """
     Affiche tous les marqueurs de structure détectés (pour debug).
     """
-    print("\n" + "=" * 60)
-    print("DEBUG: Marqueurs de structure détectés")
-    print("=" * 60)
+    logger.debug("" + "=" * 60)
+    logger.debug("DEBUG: Marqueurs de structure detectes")
+    logger.debug("=" * 60)
     
     current_livre = None
     
@@ -418,10 +419,11 @@ def debug_hierarchy_detection(full_text: str) -> None:
         
         if LIVRE_PATTERN.match(line):
             current_livre = line
-            print(f"\n📕 [{i}] LIVRE: {line}")
+            logger.debug(f"[{i}] LIVRE: {line}")
         elif TITRE_PATTERN.match(line):
-            print(f"  📘 [{i}] TITRE: {line}")
+            logger.debug(f"  [{i}] TITRE: {line}")
         elif CHAPITRE_PATTERN.match(line):
-            print(f"    📗 [{i}] CHAPITRE: {line}")
+            logger.debug(f"    [{i}] CHAPITRE: {line}")
         elif SECTION_PATTERN.match(line):
-            print(f"      📙 [{i}] SECTION: {line}")
+            logger.debug(f"      [{i}] SECTION: {line}")
+

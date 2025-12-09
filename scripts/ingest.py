@@ -10,7 +10,9 @@ from pathlib import Path
 # Ajouter le répertoire parent au path pour les imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Import config first to initialize logger
 from src.config import settings
+from loguru import logger
 from src.ingestion import load_pdf, clean_text, chunk_by_articles, enrich_metadata
 from src.ingestion.metadata_enricher import set_full_text
 from src.retrieval import generate_embeddings, index_to_chromadb
@@ -25,7 +27,7 @@ def ensure_directories():
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
-        print(f"📁 {d.relative_to(settings.project_root)}")
+        logger.info(f"Repertoire: {d.relative_to(settings.project_root)}")
 
 
 def save_processed_chunks(chunks, output_path: Path):
@@ -35,7 +37,7 @@ def save_processed_chunks(chunks, output_path: Path):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(chunks, f, ensure_ascii=False, indent=2)
     
-    print(f"💾 Chunks sauvegardés: {output_path}")
+    logger.info(f"Chunks sauvegardes: {output_path}")
 
 
 def load_processed_chunks(input_path: Path):
@@ -46,65 +48,64 @@ def load_processed_chunks(input_path: Path):
 
 def main():
     """Point d'entrée principal du pipeline d'ingestion."""
-    print("=" * 60)
-    print("🚀 BÉNIN JURIS-IA - Pipeline d'ingestion")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("BENIN JURIS-IA - Pipeline d'ingestion")
+    logger.info("=" * 60)
     
     # 0. Vérifier les répertoires
-    print("\n📂 Vérification des répertoires...")
+    logger.info("Verification des repertoires...")
     ensure_directories()
     
     # 1. Vérifier que le PDF existe
     pdf_path = settings.pdf_path
     if not pdf_path.exists():
-        print(f"\n❌ ERREUR: PDF non trouvé!")
-        print(f"   Attendu: {pdf_path}")
-        print(f"   Placez le fichier CODE-DU-NUMERIQUE.pdf dans data/raw/")
+        logger.error(f"PDF non trouve!")
+        logger.error(f"   Attendu: {pdf_path}")
+        logger.error(f"   Placez le fichier CODE-DU-NUMERIQUE.pdf dans data/raw/")
         sys.exit(1)
     
     # 2. Charger le PDF
-    print("\n📄 Étape 1/6 - Chargement du PDF...")
+    logger.info("Etape 1/6 - Chargement du PDF...")
     raw_pages = load_pdf(pdf_path)
     
     # 3. Nettoyer le texte
-    print("\n🧹 Étape 2/6 - Nettoyage ligne par ligne...")
+    logger.info("Etape 2/6 - Nettoyage ligne par ligne...")
     cleaned_text = clean_text(raw_pages)
     
     # 4. Découper par Articles
-    print("\n✂️  Étape 3/6 - Segmentation par Articles...")
+    logger.info("Etape 3/6 - Segmentation par Articles...")
     chunks = chunk_by_articles(cleaned_text)
     
     if not chunks:
-        print("❌ ERREUR: Aucun article extrait!")
+        logger.error("Aucun article extrait!")
         sys.exit(1)
     
     # 5. Enrichir les métadonnées (avec le texte complet pour le parsing hiérarchique)
-    print("\n📋 Étape 4/6 - Enrichissement des métadonnées...")
+    logger.info("Etape 4/6 - Enrichissement des metadonnees...")
     set_full_text(cleaned_text)  # Passer le texte complet pour la machine à états
     enriched_chunks = enrich_metadata(chunks)
     
     # 6. Sauvegarder les chunks traités
-    print("\n💾 Étape 5/6 - Sauvegarde des chunks traités...")
+    logger.info("Etape 5/6 - Sauvegarde des chunks traites...")
     save_processed_chunks(enriched_chunks, settings.processed_path)
     
     # 7. Générer les embeddings et indexer
-    print("\n🔢 Étape 6/6 - Vectorisation et indexation...")
+    logger.info("Etape 6/6 - Vectorisation et indexation...")
     embeddings = generate_embeddings(enriched_chunks)
     collection = index_to_chromadb(enriched_chunks, embeddings)
     
     # Résumé final
-    print("\n" + "=" * 60)
-    print("✅ INGESTION TERMINÉE AVEC SUCCÈS!")
-    print("=" * 60)
-    print(f"📊 Statistiques:")
-    print(f"   - Pages PDF traitées: {len(raw_pages)}")
-    print(f"   - Chunks générés: {len(enriched_chunks)}")
-    print(f"   - Embeddings créés: {len(embeddings)}")
-    print(f"   - Collection ChromaDB: {collection.name} ({collection.count()} documents)")
-    print(f"\n🎉 L'assistant est prêt à répondre aux questions!")
-    print(f"   Lancez: streamlit run app/streamlit_app.py")
+    logger.info("=" * 60)
+    logger.success("INGESTION TERMINEE AVEC SUCCES!")
+    logger.info("=" * 60)
+    logger.info("Statistiques:")
+    logger.info(f"   - Pages PDF traitees: {len(raw_pages)}")
+    logger.info(f"   - Chunks generes: {len(enriched_chunks)}")
+    logger.info(f"   - Embeddings crees: {len(embeddings)}")
+    logger.info(f"   - Collection ChromaDB: {collection.name} ({collection.count()} documents)")
+    logger.success("L'assistant est pret a repondre aux questions!")
+    logger.info("   Lancez: streamlit run app/streamlit_app.py")
 
 
 if __name__ == "__main__":
     main()
-

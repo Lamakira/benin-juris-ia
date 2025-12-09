@@ -6,6 +6,7 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+from loguru import logger
 
 from src.config import settings
 
@@ -109,7 +110,7 @@ def index_to_chromadb(
     # Supprimer collection existante si présente
     try:
         client.delete_collection(collection_name)
-        print(f"🗑️  Collection '{collection_name}' existante supprimée")
+        logger.info(f"Collection '{collection_name}' existante supprimee")
     except Exception:
         pass  # Si elle n'existe pas, on continue
     
@@ -128,7 +129,7 @@ def index_to_chromadb(
     # Aplatir les métadonnées pour chaque chunk
     metadatas = [flatten_metadata_for_chroma(chunk) for chunk in chunks]
     
-    print(f"📋 Métadonnées aplaties pour {len(metadatas)} chunks")
+    logger.info(f"Metadonnees aplaties pour {len(metadatas)} chunks")
     
     # Indexation par batches
     batch_size = 500
@@ -141,9 +142,9 @@ def index_to_chromadb(
             documents=documents[i:end_idx],
             metadatas=metadatas[i:end_idx]
         )
-        print(f"   ✓ Batch {i // batch_size + 1}: {end_idx - i} chunks indexés")
+        logger.info(f"   Batch {i // batch_size + 1}: {end_idx - i} chunks indexes")
     
-    print(f"✅ {len(chunks)} chunks indexés dans '{collection_name}'")
+    logger.success(f"{len(chunks)} chunks indexes dans '{collection_name}'")
     
     return collection
 
