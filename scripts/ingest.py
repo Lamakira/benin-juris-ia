@@ -89,7 +89,7 @@ def main():
     collection = index_to_chromadb(enriched_chunks, embeddings)
     
     logger.info("=" * 60)
-    logger.success("INGESTION TERMINEE AVEC SUCCES!")
+    logger.success("INGESTION TERMINÉE AVEC SUCCES!")
     logger.info("=" * 60)
     logger.info("Statistiques:")
     logger.info(f"   - Pages PDF traitées: {len(raw_pages)}")
