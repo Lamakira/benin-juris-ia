@@ -11,9 +11,7 @@ from src.config import settings
 from src.retrieval.indexer import load_vectorstore
 
 
-# =============================================================================
 # PROMPT SYSTÈME STRICT POUR L'ASSISTANT JURIDIQUE
-# =============================================================================
 
 SYSTEM_PROMPT = """Tu es un assistant juridique béninois spécialisé dans le Code du Numérique du Bénin (Loi N°2017-20 du 20 avril 2018).
 
@@ -36,9 +34,7 @@ QUESTION DE L'UTILISATEUR:
 RÉPONSE (basée uniquement sur le contexte ci-dessus):"""
 
 
-# =============================================================================
 # CONFIGURATION DU LLM ET EMBEDDINGS
-# =============================================================================
 
 def get_llm() -> ChatOpenAI:
     """
@@ -47,7 +43,7 @@ def get_llm() -> ChatOpenAI:
     return ChatOpenAI(
         model=settings.openai_llm_model,
         openai_api_key=settings.openai_api_key,
-        temperature=0,  # Zéro pour maximiser la précision juridique
+        temperature=0,  # 0 pour maximiser la précision juridique
     )
 
 
@@ -61,9 +57,7 @@ def get_embedding_model() -> OpenAIEmbeddings:
     )
 
 
-# =============================================================================
 # RECHERCHE DANS CHROMADB
-# =============================================================================
 
 def search_vectorstore(
     query: str, 
@@ -77,14 +71,13 @@ def search_vectorstore(
         query: Question de l'utilisateur
         n_results: Nombre de résultats à retourner
         filter_livre: Optionnel - filtrer par livre (ex: "LIVRE IV")
-        
     Returns:
         Liste de documents avec contenu et métadonnées
     """
     collection = load_vectorstore()
     embedding_model = get_embedding_model()
     
-    # Générer l'embedding de la query avec le MÊME modèle
+    # Générer l'embedding de la query avec le même modèle
     query_embedding = embedding_model.embed_query(query)
     
     # Construire le filtre si spécifié
@@ -141,9 +134,7 @@ def format_context(search_results: List[Dict[str, Any]]) -> str:
     return "\n---\n".join(context_parts)
 
 
-# =============================================================================
 # CHAÎNE RAG PRINCIPALE
-# =============================================================================
 
 def get_rag_chain():
     """
@@ -165,28 +156,27 @@ def get_rag_chain():
         Args:
             question: Question juridique de l'utilisateur
             n_results: Nombre de sources à considérer
-            filter_livre: Optionnel - filtrer par livre
-            
+            filter_livre: Optionnel - filtrer par livre 
         Returns:
             Dict avec answer, sources, context_used
         """
-        # 1. Recherche sémantique
+        # Recherche sémantique
         search_results = search_vectorstore(
             query=question,
             n_results=n_results,
             filter_livre=filter_livre
         )
         
-        # 2. Formatage du contexte
+        # Formatage du contexte
         context = format_context(search_results)
         
-        # 3. Construction du prompt
+        # Construction du prompt
         user_prompt = RAG_PROMPT_TEMPLATE.format(
             context=context,
             question=question
         )
         
-        # 4. Génération de la réponse
+        # Génération de la réponse
         messages = [
             SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(content=user_prompt),
@@ -194,7 +184,7 @@ def get_rag_chain():
         
         response = llm.invoke(messages)
         
-        # 5. Formater les sources pour l'affichage
+        # Formater les sources pour l'affichage
         sources = []
         for r in search_results:
             meta = r.get("metadata", {})
@@ -233,8 +223,7 @@ def query_rag(
         question: Question juridique
         n_results: Nombre de sources à considérer
         filter_livre: Optionnel - filtrer par livre spécifique
-        verbose: Afficher les détails de recherche
-        
+        verbose: Afficher les détails de recherche   
     Returns:
         Dictionnaire avec réponse et sources
     """
@@ -242,9 +231,9 @@ def query_rag(
     result = chain(question, n_results=n_results, filter_livre=filter_livre)
     
     if verbose:
-        print(f"\n📚 Sources utilisées ({len(result['sources'])})")
+        print(f"\n Sources utilisées ({len(result['sources'])})")
         for source in result["sources"]:
-            print(f"   📄 Article {source['article_number']} - {source['hierarchy_path']}")
+            print(f"      Article {source['article_number']} - {source['hierarchy_path']}")
             print(f"      Pertinence: {source['relevance_score']:.2%}")
     
     return result

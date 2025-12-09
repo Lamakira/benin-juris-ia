@@ -8,18 +8,15 @@ pour construire dynamiquement la hiérarchie, au lieu de mappings statiques.
 import re
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
+from loguru import logger
 
 
-# =============================================================================
 # PATTERNS DE DÉTECTION (Regex strictes)
-# =============================================================================
-
-# Pattern pour détecter les lignes de SOMMAIRE (Table des Matières)
-# Format typique: "LIVRE I ....... 45" ou "TITRE II ........ 78"
+# Pattern pour détecter les lignes de sommaire
 TOC_LINE_PATTERN = re.compile(r"\.{2,}\s*\d+\s*$")
 
-# Patterns pour détecter les marqueurs de structure (exclure le sommaire)
-# Ces patterns matchent SEULEMENT si la ligne ne finit PAS par des points + chiffre
+# Patterns pour détecter les marqueurs de structure
+# Ces patterns matchent seulement si la ligne ne finit PAS par des points + chiffre
 LIVRE_PATTERN = re.compile(r"^(LIVRE\s+[IVX]+|LIVRE\s+PREMIER|LIVRE\s+PRELIMINAIRE)\s*[:\-]?\s*(.*)$", re.IGNORECASE)
 TITRE_PATTERN = re.compile(r"^(TITRE\s+[IVX]+|TITRE\s+PREMIER|TITRE\s+UNIQUE)\s*[:\-]?\s*(.*)$", re.IGNORECASE)
 CHAPITRE_PATTERN = re.compile(r"^(CHAPITRE\s+[IVX]+|CHAPITRE\s+PREMIER|CHAPITRE\s+UNIQUE)\s*[:\-]?\s*(.*)$", re.IGNORECASE)
@@ -28,8 +25,7 @@ SECTION_PATTERN = re.compile(r"^(SECTION\s+\d+)\s*[:\-]?\s*(.*)$", re.IGNORECASE
 # Pattern pour détecter les Articles
 ARTICLE_PATTERN = re.compile(r"^(Article\s+(\d+)(?:er)?)\s*[:\-\.]", re.IGNORECASE)
 
-# Patterns pour détecter le VRAI début du Code (après le sommaire)
-# Le Code commence par "LIVRE PRELIMINAIRE" ou "LIVRE PREMIER" sans points de suite
+# Patterns pour détecter le vrai début du code après le sommaire
 START_MARKERS = [
     re.compile(r"^LIVRE\s+PRELIMINAIRE\b", re.IGNORECASE),
     re.compile(r"^LIVRE\s+PREMIER\b", re.IGNORECASE),
@@ -39,14 +35,13 @@ START_MARKERS = [
 
 def is_toc_line(line: str) -> bool:
     """
-    Vérifie si une ligne fait partie du sommaire (Table des Matières).
+    Vérifie si une ligne fait partie du sommaire.
     
     Les lignes de sommaire se terminent par des points de suite et un numéro de page.
     Ex: "LIVRE I ....... 45"
     
     Args:
         line: Ligne à vérifier
-        
     Returns:
         True si c'est une ligne de sommaire
     """
@@ -55,11 +50,10 @@ def is_toc_line(line: str) -> bool:
 
 def is_start_of_content(line: str) -> bool:
     """
-    Vérifie si une ligne marque le début du contenu réel (après le sommaire).
+    Vérifie si une ligne marque le début du contenu réel après le sommaire.
     
     Args:
-        line: Ligne à vérifier
-        
+        line: Ligne à vérifier    
     Returns:
         True si c'est le début du contenu
     """
@@ -75,10 +69,7 @@ def is_start_of_content(line: str) -> bool:
     return False
 
 
-# =============================================================================
 # STATE MACHINE - Structure de données
-# =============================================================================
-
 @dataclass
 class HierarchyState:
     """État courant de la hiérarchie lors du parsing."""
@@ -139,10 +130,7 @@ class HierarchyState:
         )
 
 
-# =============================================================================
 # STATE MACHINE - Parsing du texte complet
-# =============================================================================
-
 def build_article_hierarchy_map(full_text: str) -> Dict[int, HierarchyState]:
     """
     Parse le texte complet et construit un mapping article_num -> hiérarchie.
@@ -154,15 +142,14 @@ def build_article_hierarchy_map(full_text: str) -> Dict[int, HierarchyState]:
     4. Reset les sous-niveaux lors des transitions
     
     Args:
-        full_text: Texte complet nettoyé et fusionné
-        
+        full_text: Texte complet nettoyé et fusionné     
     Returns:
         Dictionnaire {numéro_article: état_hiérarchique}
     """
     article_hierarchy_map: Dict[int, HierarchyState] = {}
     current_state = HierarchyState()
     
-    # FLAG: Ne commence le parsing qu'après avoir passé le sommaire
+    # Ne commence le parsing qu'après avoir passé le sommaire
     parsing_started = False
     
     stats = {
@@ -179,49 +166,47 @@ def build_article_hierarchy_map(full_text: str) -> Dict[int, HierarchyState]:
         if not line:
             continue
         
-        # 0. Ignorer les lignes de sommaire (avec points de suite + numéro)
+        # Ignorer les lignes de sommaire
         if is_toc_line(line):
             stats["toc_lines_skipped"] += 1
             continue
         
-        # 1. Détecter le début du contenu réel (après le sommaire)
+        # Détecter le début du contenu réel après le sommaire
         if not parsing_started:
             if is_start_of_content(line):
                 parsing_started = True
-                print(f"📍 Début du contenu détecté: \"{line[:60]}...\"")
-                # Continuer pour traiter cette ligne comme un LIVRE
+                logger.info(f"Debut du contenu detecte: {line[:60]}...")
             else:
-                # Pas encore dans le contenu, ignorer
                 continue
         
-        # 2. Détecter LIVRE (priorité la plus haute)
+        # Détecter LIVRE (priorité la plus haute)
         livre_match = LIVRE_PATTERN.match(line)
         if livre_match:
             current_state.livre = livre_match.group(1).upper()
             current_state.livre_title = livre_match.group(2).strip() if livre_match.group(2) else None
-            current_state.reset_below_livre()  # RESET titre, chapitre, section
+            current_state.reset_below_livre()  # reset titre, chapitre, section
             stats["livres"] += 1
             continue
         
-        # 3. Détecter TITRE
+        # Détecter TITRE
         titre_match = TITRE_PATTERN.match(line)
         if titre_match:
             current_state.titre = titre_match.group(1).upper()
             current_state.titre_title = titre_match.group(2).strip() if titre_match.group(2) else None
-            current_state.reset_below_titre()  # RESET chapitre, section
+            current_state.reset_below_titre()  # reset chapitre, section
             stats["titres"] += 1
             continue
         
-        # 4. Détecter CHAPITRE
+        # Détecter CHAPITRE
         chapitre_match = CHAPITRE_PATTERN.match(line)
         if chapitre_match:
             current_state.chapitre = chapitre_match.group(1).upper()
             current_state.chapitre_title = chapitre_match.group(2).strip() if chapitre_match.group(2) else None
-            current_state.reset_below_chapitre()  # RESET section
+            current_state.reset_below_chapitre()  # reset section
             stats["chapitres"] += 1
             continue
         
-        # 5. Détecter SECTION
+        # Détecter SECTION
         section_match = SECTION_PATTERN.match(line)
         if section_match:
             current_state.section = section_match.group(1).upper()
@@ -237,28 +222,24 @@ def build_article_hierarchy_map(full_text: str) -> Dict[int, HierarchyState]:
             article_hierarchy_map[article_num] = current_state.copy()
             stats["articles"] += 1
     
-    print(f"📊 Parsing hiérarchique terminé:")
-    print(f"   - Lignes de sommaire ignorées: {stats['toc_lines_skipped']}")
-    print(f"   - Livres détectés: {stats['livres']}")
-    print(f"   - Titres détectés: {stats['titres']}")
-    print(f"   - Chapitres détectés: {stats['chapitres']}")
-    print(f"   - Sections détectées: {stats['sections']}")
-    print(f"   - Articles mappés: {stats['articles']}")
+    logger.info("Parsing hiérarchique terminé:")
+    logger.info(f"   - Lignes de sommaire ignorées: {stats['toc_lines_skipped']}")
+    logger.info(f"   - Livres détectés: {stats['livres']}")
+    logger.info(f"   - Titres détectés: {stats['titres']}")
+    logger.info(f"   - Chapitres détectés: {stats['chapitres']}")
+    logger.info(f"   - Sections détectées: {stats['sections']}")
+    logger.info(f"   - Articles mappés: {stats['articles']}")
     
     return article_hierarchy_map
 
 
-# =============================================================================
 # FORMATTAGE ET ENRICHISSEMENT
-# =============================================================================
-
 def format_hierarchy_path(state: HierarchyState) -> str:
     """
     Formate le chemin hiérarchique en chaîne lisible.
     
     Args:
         state: État hiérarchique
-        
     Returns:
         Chaîne formatée (ex: "LIVRE VI > TITRE I > CHAPITRE IX")
     """
@@ -267,7 +248,6 @@ def format_hierarchy_path(state: HierarchyState) -> str:
     if state.livre:
         livre_str = state.livre
         if state.livre_title:
-            # Tronquer le titre s'il est trop long
             title = state.livre_title[:50] + "..." if len(state.livre_title) > 50 else state.livre_title
             livre_str += f" ({title})"
         parts.append(livre_str)
@@ -314,7 +294,7 @@ def enrich_chunks_with_hierarchy(
     Returns:
         Liste des chunks enrichis avec hierarchy_path correct
     """
-    # 1. Construire le mapping dynamique
+    # Construire le mapping dynamique
     article_hierarchy_map = build_article_hierarchy_map(full_text)
     
     enriched_chunks: List[Dict[str, Any]] = []
@@ -342,7 +322,7 @@ def enrich_chunks_with_hierarchy(
             enriched["content_with_context"] = context_prefix + chunk["content"]
             stats["enriched"] += 1
         else:
-            # Article non trouvé dans le mapping (définitions, etc.)
+            # Article non trouvé dans le mapping
             enriched["metadata"] = {
                 **chunk.get("metadata", {}),
                 "source": "Code du Numérique du Bénin - Loi N°2017-20 du 20 avril 2018",
@@ -353,18 +333,14 @@ def enrich_chunks_with_hierarchy(
         
         enriched_chunks.append(enriched)
     
-    print(f"📋 Enrichissement terminé:")
-    print(f"   - Chunks enrichis avec hiérarchie: {stats['enriched']}")
-    print(f"   - Chunks sans mapping (définitions, etc.): {stats['unknown']}")
+    logger.info("Enrichissement terminé:")
+    logger.info(f"   - Chunks enrichis avec hiérarchie: {stats['enriched']}")
+    logger.info(f"   - Chunks sans mapping (définitions, etc.): {stats['unknown']}")
     
     return enriched_chunks
 
 
-# =============================================================================
-# FONCTION DE COMPATIBILITÉ (pour le pipeline existant)
-# =============================================================================
-
-# Variable globale pour stocker le texte complet (set par ingest.py)
+# Variable globale pour stocker le texte complet
 _full_text_cache: Optional[str] = None
 
 def set_full_text(text: str):
@@ -384,32 +360,28 @@ def enrich_metadata(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ou utiliser directement enrich_chunks_with_hierarchy(chunks, full_text).
     
     Args:
-        chunks: Liste des chunks à enrichir
-        
+        chunks: Liste des chunks à enrichir  
     Returns:
         Liste des chunks enrichis
     """
     global _full_text_cache
     
     if _full_text_cache is None:
-        print("⚠️  Attention: Texte complet non défini. Utilisation du fallback.")
+        logger.warning("Texte complet non defini. Utilisation du fallback.")
         # Fallback: reconstruire le texte depuis les chunks
         _full_text_cache = "\n".join(c.get("content", "") for c in chunks)
     
     return enrich_chunks_with_hierarchy(chunks, _full_text_cache)
 
 
-# =============================================================================
 # UTILITAIRES DE DEBUG
-# =============================================================================
-
 def debug_hierarchy_detection(full_text: str) -> None:
     """
-    Affiche tous les marqueurs de structure détectés (pour debug).
+    Affiche tous les marqueurs de structure détectés.
     """
-    print("\n" + "=" * 60)
-    print("DEBUG: Marqueurs de structure détectés")
-    print("=" * 60)
+    logger.debug("" + "=" * 60)
+    logger.debug("DEBUG: Marqueurs de structure détectés")
+    logger.debug("=" * 60)
     
     current_livre = None
     
@@ -418,10 +390,11 @@ def debug_hierarchy_detection(full_text: str) -> None:
         
         if LIVRE_PATTERN.match(line):
             current_livre = line
-            print(f"\n📕 [{i}] LIVRE: {line}")
+            logger.debug(f"[{i}] LIVRE: {line}")
         elif TITRE_PATTERN.match(line):
-            print(f"  📘 [{i}] TITRE: {line}")
+            logger.debug(f"  [{i}] TITRE: {line}")
         elif CHAPITRE_PATTERN.match(line):
-            print(f"    📗 [{i}] CHAPITRE: {line}")
+            logger.debug(f"    [{i}] CHAPITRE: {line}")
         elif SECTION_PATTERN.match(line):
-            print(f"      📙 [{i}] SECTION: {line}")
+            logger.debug(f"      [{i}] SECTION: {line}")
+

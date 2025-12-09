@@ -14,6 +14,7 @@ from collections import Counter
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config import settings
+from loguru import logger
 
 
 def load_chunks(input_path: Path) -> List[Dict[str, Any]]:
@@ -30,14 +31,14 @@ def validate_chunk_count(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     expected_min = 500
     expected_max = 800
     
-    status = "✅" if expected_min <= count <= expected_max else "⚠️"
+    status = "OK" if expected_min <= count <= expected_max else "WARN"
     
     return {
         "name": "Nombre de chunks",
         "status": status,
         "value": count,
         "expected": f"{expected_min}-{expected_max}",
-        "message": f"{count} chunks extraits" if status == "✅" else f"Nombre inhabituel: {count}",
+        "message": f"{count} chunks extraits" if status == "OK" else f"Nombre inhabituel: {count}",
     }
 
 
@@ -45,7 +46,7 @@ def validate_empty_chunks(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Détecte les chunks avec contenu vide."""
     empty = [c["id"] for c in chunks if not c.get("content", "").strip()]
     
-    status = "✅" if len(empty) == 0 else "❌"
+    status = "OK" if len(empty) == 0 else "ERROR"
     
     return {
         "name": "Chunks vides",
@@ -53,7 +54,7 @@ def validate_empty_chunks(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         "value": len(empty),
         "expected": 0,
         "details": empty[:10] if empty else None,
-        "message": "Aucun chunk vide" if status == "✅" else f"{len(empty)} chunks vides détectés",
+        "message": "Aucun chunk vide" if status == "OK" else f"{len(empty)} chunks vides detectes",
     }
 
 
@@ -67,9 +68,9 @@ def validate_article_sequence(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     
     if not article_nums:
         return {
-            "name": "Séquence d'articles",
-            "status": "❌",
-            "message": "Aucun article trouvé",
+            "name": "Sequence d'articles",
+            "status": "ERROR",
+            "message": "Aucun article trouve",
         }
     
     # Trouver les gaps
@@ -77,10 +78,10 @@ def validate_article_sequence(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     actual = set(article_nums)
     missing = sorted(expected - actual)
     
-    status = "✅" if len(missing) <= 5 else "⚠️"
+    status = "OK" if len(missing) <= 5 else "WARN"
     
     return {
-        "name": "Séquence d'articles",
+        "name": "Sequence d'articles",
         "status": status,
         "value": f"{min(article_nums)}-{max(article_nums)}",
         "missing_count": len(missing),
@@ -97,14 +98,14 @@ def validate_hierarchy_coverage(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     )
     
     coverage = with_hierarchy / len(chunks) * 100 if chunks else 0
-    status = "✅" if coverage >= 95 else "⚠️" if coverage >= 80 else "❌"
+    status = "OK" if coverage >= 95 else "WARN" if coverage >= 80 else "ERROR"
     
     return {
-        "name": "Couverture hiérarchique",
+        "name": "Couverture hierarchique",
         "status": status,
         "value": f"{coverage:.1f}%",
-        "expected": "≥95%",
-        "message": f"{with_hierarchy}/{len(chunks)} chunks ont une hiérarchie",
+        "expected": ">=95%",
+        "message": f"{with_hierarchy}/{len(chunks)} chunks ont une hierarchie",
     }
 
 
@@ -135,15 +136,15 @@ def detect_truncated_words(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "last_word": last_word,
             })
     
-    status = "✅" if len(suspects) <= 3 else "⚠️"
+    status = "OK" if len(suspects) <= 3 else "WARN"
     
     return {
-        "name": "Mots tronqués",
+        "name": "Mots tronques",
         "status": status,
         "value": len(suspects),
-        "expected": "≤3",
+        "expected": "<=3",
         "details": suspects[:10] if suspects else None,
-        "message": f"{len(suspects)} chunks suspects" if suspects else "Aucune troncation détectée",
+        "message": f"{len(suspects)} chunks suspects" if suspects else "Aucune troncation detectee",
     }
 
 
@@ -152,23 +153,23 @@ def validate_content_length_distribution(chunks: List[Dict[str, Any]]) -> Dict[s
     lengths = [len(c.get("content", "")) for c in chunks]
     
     if not lengths:
-        return {"name": "Distribution longueurs", "status": "❌", "message": "Pas de données"}
+        return {"name": "Distribution longueurs", "status": "ERROR", "message": "Pas de donnees"}
     
     avg_len = sum(lengths) / len(lengths)
     min_len = min(lengths)
     max_len = max(lengths)
     
-    # Chunks très courts (< 50 chars) peuvent indiquer un problème
+    # Chunks très courts (<50 chars) peuvent indiquer un problème
     very_short = sum(1 for l in lengths if l < 50)
     
-    status = "✅" if very_short <= 5 else "⚠️"
+    status = "OK" if very_short <= 5 else "WARN"
     
     return {
         "name": "Distribution longueurs",
         "status": status,
         "value": f"moy={avg_len:.0f}, min={min_len}, max={max_len}",
         "very_short_count": very_short,
-        "message": f"{very_short} chunks très courts (<50 chars)",
+        "message": f"{very_short} chunks tres courts (<50 chars)",
     }
 
 
@@ -178,7 +179,7 @@ def validate_type_distribution(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     
     return {
         "name": "Types de chunks",
-        "status": "ℹ️",
+        "status": "INFO",
         "distribution": dict(types),
         "message": ", ".join(f"{t}: {n}" for t, n in types.items()),
     }
@@ -199,37 +200,43 @@ def run_all_validations(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def print_report(results: List[Dict[str, Any]]):
     """Affiche le rapport de validation."""
-    print("\n" + "=" * 60)
-    print("📊 RAPPORT DE VALIDATION DES CHUNKS")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("RAPPORT DE VALIDATION DES CHUNKS")
+    logger.info("=" * 60)
     
     for result in results:
         status = result.get("status", "?")
         name = result.get("name", "Unknown")
         message = result.get("message", "")
         
-        print(f"\n{status} {name}")
-        print(f"   {message}")
+        if status == "OK":
+            logger.success(f"{name}: {message}")
+        elif status == "WARN":
+            logger.warning(f"{name}: {message}")
+        elif status == "ERROR":
+            logger.error(f"{name}: {message}")
+        else:
+            logger.info(f"{name}: {message}")
         
         if result.get("details"):
-            print(f"   Détails: {result['details'][:5]}...")
+            logger.debug(f"   Details: {result['details'][:5]}...")
     
     # Résumé
     statuses = [r.get("status") for r in results]
-    errors = statuses.count("❌")
-    warnings = statuses.count("⚠️")
+    errors = statuses.count("ERROR")
+    warnings = statuses.count("WARN")
     
-    print("\n" + "-" * 60)
+    logger.info("-" * 60)
     if errors:
-        print(f"❌ {errors} erreur(s) détectée(s)")
+        logger.error(f"{errors} erreur(s) detectee(s)")
     elif warnings:
-        print(f"⚠️  {warnings} avertissement(s)")
+        logger.warning(f"{warnings} avertissement(s)")
     else:
-        print("✅ Toutes les validations passées!")
+        logger.success("Toutes les validations passees!")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validation des chunks BÉNIN JURIS-IA")
+    parser = argparse.ArgumentParser(description="Validation des chunks BENIN JURIS-IA")
     parser.add_argument(
         "--input", 
         type=str, 
@@ -248,8 +255,8 @@ def main():
     input_path = Path(args.input) if args.input else settings.processed_path
     
     if not input_path.exists():
-        print(f"❌ Fichier non trouvé: {input_path}")
-        print("   Exécutez d'abord: python scripts/ingest.py")
+        logger.error(f"Fichier non trouve: {input_path}")
+        logger.error("   Executez d'abord: python scripts/ingest.py")
         sys.exit(1)
     
     # Charger et valider

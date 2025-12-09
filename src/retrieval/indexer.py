@@ -6,6 +6,7 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+from loguru import logger
 
 from src.config import settings
 
@@ -34,8 +35,7 @@ def flatten_metadata_for_chroma(chunk: Dict[str, Any]) -> Dict[str, Any]:
     Cette fonction extrait les champs de 'hierarchy' et les ajoute au niveau racine.
     
     Args:
-        chunk: Chunk avec métadonnées potentiellement imbriquées
-        
+        chunk: Chunk avec métadonnées potentiellement imbriquées        
     Returns:
         Dictionnaire de métadonnées aplaties (compatible ChromaDB)
     """
@@ -48,19 +48,15 @@ def flatten_metadata_for_chroma(chunk: Dict[str, Any]) -> Dict[str, Any]:
     # Extraire les métadonnées du chunk
     chunk_meta = chunk.get("metadata", {})
     
-    # Ajouter le hierarchy_path (string, pas de problème)
     if "hierarchy_path" in chunk_meta:
         meta["hierarchy_path"] = str(chunk_meta["hierarchy_path"])
     
-    # Ajouter la source
     if "source" in chunk_meta:
         meta["source"] = str(chunk_meta["source"])
     
-    # APLATIR la hiérarchie (critique pour le filtrage ChromaDB)
+    # Aplatir la hiérarchie 
     hierarchy = chunk_meta.get("hierarchy", {})
     if isinstance(hierarchy, dict):
-        # Extraire les champs de haut niveau pour permettre le filtrage
-        # Ex: filter={"livre": "LIVRE IV"}
         if hierarchy.get("livre"):
             meta["livre"] = str(hierarchy["livre"])
         if hierarchy.get("livre_title"):
@@ -75,9 +71,7 @@ def flatten_metadata_for_chroma(chunk: Dict[str, Any]) -> Dict[str, Any]:
             meta["chapitre_title"] = str(hierarchy["chapitre_title"])
         if hierarchy.get("section"):
             meta["section"] = str(hierarchy["section"])
-    
-    # NE PAS inclure le dictionnaire 'hierarchy' original (cause erreur ChromaDB)
-    
+      
     return meta
 
 
@@ -98,20 +92,18 @@ def index_to_chromadb(
     Args:
         chunks: Liste des chunks enrichis
         embeddings: Liste des vecteurs d'embeddings
-        collection_name: Nom de la collection (défaut: depuis config)
-        
+        collection_name: Nom de la collection (défaut: depuis config) 
     Returns:
         Collection ChromaDB créée
     """
     client = get_chroma_client()
     collection_name = collection_name or settings.chroma_collection_name
     
-    # Supprimer collection existante si présente
     try:
         client.delete_collection(collection_name)
-        print(f"🗑️  Collection '{collection_name}' existante supprimée")
+        logger.info(f"Collection '{collection_name}' existante supprimee")
     except Exception:
-        pass  # Si elle n'existe pas, on continue
+        pass 
     
     # Créer nouvelle collection
     collection = client.create_collection(
@@ -122,13 +114,12 @@ def index_to_chromadb(
     # Préparer les données pour l'indexation
     ids = [f"chunk_{i}_{chunk['id'].replace(' ', '_')}" for i, chunk in enumerate(chunks)]
     
-    # IMPORTANT: Utiliser content_with_context pour les embeddings (contexte hiérarchique inclus)
     documents = [chunk.get("content_with_context", chunk["content"]) for chunk in chunks]
     
     # Aplatir les métadonnées pour chaque chunk
     metadatas = [flatten_metadata_for_chroma(chunk) for chunk in chunks]
     
-    print(f"📋 Métadonnées aplaties pour {len(metadatas)} chunks")
+    logger.info(f"Métadonnées aplaties pour {len(metadatas)} chunks")
     
     # Indexation par batches
     batch_size = 500
@@ -141,9 +132,9 @@ def index_to_chromadb(
             documents=documents[i:end_idx],
             metadatas=metadatas[i:end_idx]
         )
-        print(f"   ✓ Batch {i // batch_size + 1}: {end_idx - i} chunks indexés")
+        logger.info(f"   Batch {i // batch_size + 1}: {end_idx - i} chunks indexes")
     
-    print(f"✅ {len(chunks)} chunks indexés dans '{collection_name}'")
+    logger.success(f"{len(chunks)} chunks indexes dans '{collection_name}'")
     
     return collection
 
@@ -154,7 +145,6 @@ def load_vectorstore(collection_name: Optional[str] = None) -> chromadb.Collecti
     
     Args:
         collection_name: Nom de la collection
-        
     Returns:
         Collection ChromaDB
     """
@@ -170,7 +160,6 @@ def get_collection_stats(collection: chromadb.Collection) -> Dict[str, Any]:
     
     Args:
         collection: Collection ChromaDB
-        
     Returns:
         Dictionnaire de statistiques
     """

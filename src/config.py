@@ -2,9 +2,11 @@
 BÉNIN JURIS-IA - Configuration centralisée
 """
 import os
+import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from loguru import logger
 
 
 class Settings(BaseSettings):
@@ -33,6 +35,9 @@ class Settings(BaseSettings):
         env="APP_DESCRIPTION"
     )
     
+    # Logging
+    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -52,3 +57,25 @@ class Settings(BaseSettings):
 
 # Singleton
 settings = Settings()
+
+
+# =============================================================================
+# CONFIGURATION DU LOGGER (loguru)
+# =============================================================================
+
+LOG_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan> - "
+    "<level>{message}</level>"
+)
+
+# Reset et configuration du logger
+logger.remove()
+logger.add(
+    sys.stderr,
+    format=LOG_FORMAT,
+    level=settings.log_level,
+    colorize=True
+)
+

@@ -56,4 +56,4 @@ streamlit run app/streamlit_app.py
 
 ## Licence
 
-Projet ECP 2025
+Projet ECP 2025 - Réalisé par Saïd ARIKAMA CHABI et Princesse ZANOU

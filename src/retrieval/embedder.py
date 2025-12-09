@@ -4,6 +4,7 @@ Génération des embeddings avec OpenAI text-embedding-3-small.
 """
 from typing import List, Dict, Any
 from langchain_openai import OpenAIEmbeddings
+from loguru import logger
 from src.config import settings
 
 
@@ -27,8 +28,7 @@ def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[List[float]]:
     Utilise le contenu enrichi avec contexte pour de meilleurs résultats.
     
     Args:
-        chunks: Liste des chunks avec content_with_context
-        
+        chunks: Liste des chunks avec content_with_context    
     Returns:
         Liste des vecteurs d'embeddings
     """
@@ -40,9 +40,9 @@ def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[List[float]]:
         for chunk in chunks
     ]
     
-    print(f"🔢 Génération des embeddings pour {len(texts)} chunks...")
+    logger.info(f"Génération des embeddings pour {len(texts)} chunks...")
     
-    # Batch processing pour éviter les rate limits
+    # Batch processing 
     batch_size = 100
     all_embeddings = []
     
@@ -50,9 +50,9 @@ def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[List[float]]:
         batch = texts[i:i + batch_size]
         batch_embeddings = embeddings_model.embed_documents(batch)
         all_embeddings.extend(batch_embeddings)
-        print(f"   ✓ Batch {i // batch_size + 1}: {len(batch)} embeddings générés")
+        logger.info(f"   Batch {i // batch_size + 1}: {len(batch)} embeddings générés")
     
-    print(f"✅ {len(all_embeddings)} embeddings générés au total")
+    logger.success(f"{len(all_embeddings)} embeddings générés au total")
     
     return all_embeddings
 
@@ -63,7 +63,6 @@ def embed_query(query: str) -> List[float]:
     
     Args:
         query: Question de l'utilisateur
-        
     Returns:
         Vecteur d'embedding
     """
