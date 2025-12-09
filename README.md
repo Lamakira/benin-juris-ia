@@ -56,4 +56,4 @@ streamlit run app/streamlit_app.py
 
 ## Licence
 
-Projet éducatif - Code du Numérique du Bénin © République du Bénin
+Projet ECP 2025
