@@ -37,7 +37,7 @@ def save_processed_chunks(chunks, output_path: Path):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(chunks, f, ensure_ascii=False, indent=2)
     
-    logger.info(f"Chunks sauvegardes: {output_path}")
+    logger.info(f"Chunks sauvegardés: {output_path}")
 
 
 def load_processed_chunks(input_path: Path):
