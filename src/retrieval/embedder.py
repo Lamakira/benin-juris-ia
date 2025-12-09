@@ -28,8 +28,7 @@ def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[List[float]]:
     Utilise le contenu enrichi avec contexte pour de meilleurs résultats.
     
     Args:
-        chunks: Liste des chunks avec content_with_context
-        
+        chunks: Liste des chunks avec content_with_context    
     Returns:
         Liste des vecteurs d'embeddings
     """
@@ -41,9 +40,9 @@ def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[List[float]]:
         for chunk in chunks
     ]
     
-    logger.info(f"Generation des embeddings pour {len(texts)} chunks...")
+    logger.info(f"Génération des embeddings pour {len(texts)} chunks...")
     
-    # Batch processing pour éviter les rate limits
+    # Batch processing 
     batch_size = 100
     all_embeddings = []
     
@@ -51,9 +50,9 @@ def generate_embeddings(chunks: List[Dict[str, Any]]) -> List[List[float]]:
         batch = texts[i:i + batch_size]
         batch_embeddings = embeddings_model.embed_documents(batch)
         all_embeddings.extend(batch_embeddings)
-        logger.info(f"   Batch {i // batch_size + 1}: {len(batch)} embeddings generes")
+        logger.info(f"   Batch {i // batch_size + 1}: {len(batch)} embeddings générés")
     
-    logger.success(f"{len(all_embeddings)} embeddings generes au total")
+    logger.success(f"{len(all_embeddings)} embeddings générés au total")
     
     return all_embeddings
 
@@ -64,7 +63,6 @@ def embed_query(query: str) -> List[float]:
     
     Args:
         query: Question de l'utilisateur
-        
     Returns:
         Vecteur d'embedding
     """
