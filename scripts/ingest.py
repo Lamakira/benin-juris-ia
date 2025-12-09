@@ -10,7 +10,7 @@ from pathlib import Path
 # Ajouter le répertoire parent au path pour les imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Import config first to initialize logger
+# Importer config
 from src.config import settings
 from loguru import logger
 from src.ingestion import load_pdf, clean_text, chunk_by_articles, enrich_metadata
@@ -52,58 +52,51 @@ def main():
     logger.info("BENIN JURIS-IA - Pipeline d'ingestion")
     logger.info("=" * 60)
     
-    # 0. Vérifier les répertoires
-    logger.info("Verification des repertoires...")
+    # Vérifier les répertoires
+    logger.info("Vérification des répertoires...")
     ensure_directories()
     
-    # 1. Vérifier que le PDF existe
+    # Vérifier que le PDF existe
     pdf_path = settings.pdf_path
     if not pdf_path.exists():
-        logger.error(f"PDF non trouve!")
+        logger.error(f"PDF non trouvé!")
         logger.error(f"   Attendu: {pdf_path}")
         logger.error(f"   Placez le fichier CODE-DU-NUMERIQUE.pdf dans data/raw/")
         sys.exit(1)
     
-    # 2. Charger le PDF
-    logger.info("Etape 1/6 - Chargement du PDF...")
+    logger.info("Étape 1/6 - Chargement du PDF...")
     raw_pages = load_pdf(pdf_path)
-    
-    # 3. Nettoyer le texte
-    logger.info("Etape 2/6 - Nettoyage ligne par ligne...")
+
+    logger.info("Étape 2/6 - Nettoyage ligne par ligne...")
     cleaned_text = clean_text(raw_pages)
-    
-    # 4. Découper par Articles
-    logger.info("Etape 3/6 - Segmentation par Articles...")
+
+    logger.info("Étape 3/6 - Segmentation par Articles...")
     chunks = chunk_by_articles(cleaned_text)
     
     if not chunks:
         logger.error("Aucun article extrait!")
         sys.exit(1)
     
-    # 5. Enrichir les métadonnées (avec le texte complet pour le parsing hiérarchique)
-    logger.info("Etape 4/6 - Enrichissement des metadonnees...")
-    set_full_text(cleaned_text)  # Passer le texte complet pour la machine à états
+    logger.info("Étape 4/6 - Enrichissement des métadonnées...")
+    set_full_text(cleaned_text) 
     enriched_chunks = enrich_metadata(chunks)
     
-    # 6. Sauvegarder les chunks traités
-    logger.info("Etape 5/6 - Sauvegarde des chunks traites...")
+    logger.info("Étape 5/6 - Sauvegarde des chunks traités...")
     save_processed_chunks(enriched_chunks, settings.processed_path)
     
-    # 7. Générer les embeddings et indexer
-    logger.info("Etape 6/6 - Vectorisation et indexation...")
+    logger.info("Étape 6/6 - Vectorisation et indexation...")
     embeddings = generate_embeddings(enriched_chunks)
     collection = index_to_chromadb(enriched_chunks, embeddings)
     
-    # Résumé final
     logger.info("=" * 60)
     logger.success("INGESTION TERMINEE AVEC SUCCES!")
     logger.info("=" * 60)
     logger.info("Statistiques:")
-    logger.info(f"   - Pages PDF traitees: {len(raw_pages)}")
-    logger.info(f"   - Chunks generes: {len(enriched_chunks)}")
-    logger.info(f"   - Embeddings crees: {len(embeddings)}")
+    logger.info(f"   - Pages PDF traitées: {len(raw_pages)}")
+    logger.info(f"   - Chunks générés: {len(enriched_chunks)}")
+    logger.info(f"   - Embeddings créés: {len(embeddings)}")
     logger.info(f"   - Collection ChromaDB: {collection.name} ({collection.count()} documents)")
-    logger.success("L'assistant est pret a repondre aux questions!")
+    logger.success("L'assistant est prêt à répondre aux questions!")
     logger.info("   Lancez: streamlit run app/streamlit_app.py")
 
 
