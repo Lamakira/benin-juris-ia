@@ -31,3 +31,7 @@ isort
 # Logging
 loguru
 
+langchain-huggingface 
+langchain-community 
+sentence-transformers
+
